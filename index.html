@@ -3,21 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SG 2026 Leave Planner</title>
+    <title>2026 Leave Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; padding-bottom: 80px; } /* Added padding for bottom bar */
-        .day-cell { transition: all 0.15s ease-in-out; user-select: none; box-sizing: border-box; }
-        .day-cell:not(.cursor-default):active { transform: scale(0.95); } /* Mobile touch feedback */
-        .day-cell:not(.cursor-default):hover { transform: scale(1.05); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        /* Base Styles & Touch Optimization */
+        body { font-family: ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; padding-bottom: 100px; }
+        .day-cell { transition: all 0.1s ease-in-out; user-select: none; box-sizing: border-box; touch-action: manipulation; }
+        .day-cell:active { transform: scale(0.92); } /* Satisfying touch feedback */
         .half-day { background-image: linear-gradient(to right, #10b981 50%, #ffffff 50%); background-size: 100% 100%; background-repeat: no-repeat; color: #1f2937; }
+        
         /* Loading overlay */
         #loading-screen { position: fixed; inset: 0; background: white; z-index: 100; display: flex; justify-content: center; align-items: center; flex-direction: column; transition: opacity 0.5s; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Tool Selector Active State */
-        .tool-btn.active { background-color: #eff6ff; border-color: #3b82f6; color: #2563eb; ring-width: 2px; ring-color: #3b82f6; }
+        /* Mode Switcher Active State */
+        .mode-btn { opacity: 0.6; filter: grayscale(100%); transition: all 0.2s; border: 2px solid transparent; }
+        .mode-btn.active { opacity: 1; filter: grayscale(0%); background-color: #f0fdf4; border-color: #10b981; transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .mode-btn.active.block-mode { background-color: #fef2f2; border-color: #ef4444; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -42,32 +45,33 @@
     </div>
 
     <div class="min-h-screen p-4 sm:p-8">
-        <header class="mb-8 p-4 bg-white shadow-xl rounded-xl">
-            <h1 class="text-2xl sm:text-4xl font-extrabold text-blue-600 tracking-tight">SG 2026 Leave Planner</h1>
+        <header class="mb-6 p-4 bg-white shadow-xl rounded-xl">
+            <h1 class="text-2xl sm:text-4xl font-extrabold text-blue-600 tracking-tight">2026 Leave Planner</h1>
             <div class="flex flex-col sm:flex-row sm:items-center justify-between mt-2 gap-2">
-                <p class="text-sm text-gray-500">Maximize your 2026 holidays.</p>
-                <div class="flex items-center gap-2">
-                    <div class="text-xs font-mono bg-gray-100 p-1.5 rounded text-gray-600">
+                <p class="text-xs sm:text-sm text-gray-500">Maximize your 2026 holidays.</p>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <div class="text-[10px] sm:text-xs font-mono bg-gray-100 p-1.5 rounded text-gray-600">
                         ID: <span id="user-id-display">...</span>
                     </div>
-                    <button id="copy-link-btn" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition">Copy Link</button>
-                    <button id="open-sync-btn" class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300 transition">Load ID</button>
+                    <button id="copy-link-btn" class="text-[10px] sm:text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition">Copy Link</button>
+                    <button id="open-sync-btn" class="text-[10px] sm:text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300 transition">Load ID</button>
                 </div>
             </div>
             <div class="text-right mt-1">
-                <span id="save-status" class="text-xs font-medium text-emerald-600">Connecting...</span>
+                <span id="save-status" class="text-[10px] font-medium text-emerald-600">Connecting...</span>
             </div>
         </header>
 
-        <section class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="p-4 bg-white rounded-xl shadow-lg border-l-4 border-emerald-500">
+        <section class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Balance -->
+            <div class="p-4 bg-white rounded-xl shadow-lg border-l-4 border-emerald-500 relative overflow-hidden">
                 <div class="flex justify-between items-center mb-1">
-                    <p class="text-lg font-semibold text-gray-500">Annual Leave Balance</p>
+                    <p class="text-lg font-semibold text-gray-500">Leave Balance</p>
                     <button id="edit-balance-btn" class="text-blue-500 hover:text-blue-700 p-1 rounded-full"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
                 </div>
                 <div id="balance-display">
                     <div id="leave-balance" class="text-4xl font-bold mt-1 text-emerald-500">21</div>
-                    <p id="total-days-display" class="text-sm text-gray-400">Remaining of 21 days</p>
+                    <p id="total-days-display" class="text-xs text-gray-400">of 21 days remaining</p>
                 </div>
                 <div id="balance-edit-form" class="hidden mt-2">
                     <input type="number" id="new-total-leave" class="w-full p-2 border rounded-lg text-lg" value="21" min="0" step="0.5">
@@ -75,45 +79,50 @@
                 </div>
             </div>
             
-            <!-- Legend (Hidden on mobile to save space, relies on tool selector) -->
-            <div class="md:col-span-2 p-4 bg-white rounded-xl shadow-lg hidden sm:block">
-                <p class="text-lg font-semibold mb-2">Key</p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-medium">
-                    <div class="flex items-center"><span class="w-4 h-4 rounded-full mr-2 bg-blue-500"></span> Public Holiday</div>
-                    <div class="flex items-center"><span class="w-4 h-4 rounded-full mr-2 bg-gray-200"></span> Weekend</div>
-                    <div class="flex items-center"><span class="w-4 h-4 rounded-full mr-2 bg-yellow-400"></span> Suggested</div>
-                    <div class="flex items-center"><span class="w-4 h-4 rounded-full mr-2 bg-emerald-500"></span> Full Leave</div>
-                    <div class="flex items-center"><span class="w-4 h-4 rounded-full mr-2 half-day border border-gray-300"></span> Half Leave</div>
-                    <div class="flex items-center"><span class="w-4 h-4 rounded-full mr-2 bg-red-500"></span> Blocked</div>
+            <!-- Legend (Visible on Mobile now) -->
+            <div class="md:col-span-2 p-3 bg-white rounded-xl shadow-lg">
+                <p class="text-sm font-bold mb-2 text-gray-600">Calendar Key</p>
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-[10px] sm:text-xs font-medium text-gray-600">
+                    <div class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5 bg-blue-500"></span> Public Hol.</div>
+                    <div class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5 bg-gray-200"></span> Weekend</div>
+                    <div class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5 bg-yellow-400"></span> Suggested</div>
+                    <div class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5 bg-emerald-500"></span> Full Leave</div>
+                    <div class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5 half-day border border-gray-300"></span> Half Leave</div>
+                    <div class="flex items-center"><span class="w-3 h-3 rounded-full mr-1.5 bg-red-500"></span> Blocked</div>
                 </div>
             </div>
         </section>
 
-        <main id="calendar-grid" class="space-y-8 pb-16"></main>
+        <main id="calendar-grid" class="space-y-6 pb-20"></main>
         
-        <div id="toast" class="fixed bottom-24 right-4 p-3 rounded-xl bg-blue-600 text-white shadow-xl z-50 transition-opacity duration-300 opacity-0 pointer-events-none">Notification</div>
+        <div id="toast" class="fixed bottom-28 right-4 p-3 rounded-xl bg-gray-800 text-white shadow-xl z-50 transition-opacity duration-300 opacity-0 pointer-events-none text-sm">Notification</div>
     </div>
 
-    <!-- Mobile-Friendly Action Bar -->
-    <div class="fixed bottom-0 inset-x-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-2 z-40 border-t flex justify-around items-center safe-area-pb">
-        <button class="tool-btn active flex flex-col items-center p-2 rounded-lg border border-transparent w-1/4" onclick="setTool(1)">
-            <div class="w-5 h-5 bg-emerald-500 rounded-full mb-1"></div>
-            <span class="text-[10px] font-bold">Full Day</span>
-        </button>
-        <button class="tool-btn flex flex-col items-center p-2 rounded-lg border border-transparent w-1/4" onclick="setTool(0.5)">
-            <div class="w-5 h-5 half-day rounded-full border border-gray-300 mb-1"></div>
-            <span class="text-[10px] font-bold">Half Day</span>
-        </button>
-        <button class="tool-btn flex flex-col items-center p-2 rounded-lg border border-transparent w-1/4" onclick="setTool(0)">
-            <div class="w-5 h-5 bg-red-500 rounded-full mb-1"></div>
-            <span class="text-[10px] font-bold">Block</span>
-        </button>
-        <button class="tool-btn flex flex-col items-center p-2 rounded-lg border border-transparent w-1/4" onclick="setTool(-1)">
-            <div class="w-5 h-5 border-2 border-gray-300 rounded-full mb-1 bg-white relative">
-                 <span class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">✕</span>
+    <!-- Improved Action Bar (Mode Switcher) -->
+    <div class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.1)] p-3 z-40 border-t border-gray-100 flex justify-center gap-4 safe-area-pb">
+        
+        <!-- Leave Mode Button -->
+        <button id="mode-leave" class="mode-btn active flex items-center gap-3 px-6 py-3 rounded-xl bg-white w-full sm:w-auto justify-center" onclick="setMode('leave')">
+            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </div>
-            <span class="text-[10px] font-bold">Erase</span>
+            <div class="text-left">
+                <div class="text-xs font-bold text-gray-800">Book Leave</div>
+                <div class="text-[10px] text-gray-500">Tap to cycle: Full &rarr; Half &rarr; Off</div>
+            </div>
         </button>
+
+        <!-- Block Mode Button -->
+        <button id="mode-block" class="mode-btn block-mode flex items-center gap-3 px-6 py-3 rounded-xl bg-white w-full sm:w-auto justify-center" onclick="setMode('block')">
+            <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+            </div>
+            <div class="text-left">
+                <div class="text-xs font-bold text-gray-800">Block Dates</div>
+                <div class="text-[10px] text-gray-500">Tap to block work days</div>
+            </div>
+        </button>
+
     </div>
 
     <script type="module">
@@ -122,7 +131,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
-        // --- 2. YOUR FIREBASE CONFIGURATION ---
+        // --- 2. FIREBASE CONFIG ---
         const firebaseConfig = {
           apiKey: "AIzaSyCZJnFsvkXuEOwjRXFb06rcZ-w39L7Lv9c",
           authDomain: "leave-planner-2026-d0f0f.firebaseapp.com",
@@ -140,17 +149,13 @@
         
         const YEAR = 2026;
         let userId = null;
-        let currentTool = 1; // Default tool: 1 (Full Day)
+        let activeMode = 'leave'; // 'leave' or 'block'
         
-        // Expose setTool to window for HTML buttons
-        window.setTool = function(val) {
-            currentTool = val;
-            // Update UI
-            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            // Find the button that called this (hacky but works for this simple setup)
-            // or just iterate buttons based on index.
-            const index = val === 1 ? 0 : val === 0.5 ? 1 : val === 0 ? 2 : 3;
-            document.querySelectorAll('.tool-btn')[index].classList.add('active');
+        // Expose setMode to window
+        window.setMode = function(mode) {
+            activeMode = mode;
+            document.getElementById('mode-leave').classList.toggle('active', mode === 'leave');
+            document.getElementById('mode-block').classList.toggle('active', mode === 'block');
         };
         
         const state = {
@@ -164,8 +169,8 @@
         // Data Setup
         const HOLIDAYS = [
             { date: '2026-01-01', name: 'New Year\'s Day', isObserved: false },
-            { date: '2026-02-17', name: 'CNY 1', isObserved: false },
-            { date: '2026-02-18', name: 'CNY 2', isObserved: false },
+            { date: '2026-02-17', name: 'Chinese New Year 1', isObserved: false },
+            { date: '2026-02-18', name: 'Chinese New Year 2', isObserved: false },
             { date: '2026-03-21', name: 'Hari Raya Puasa', isObserved: false },
             { date: '2026-04-03', name: 'Good Friday', isObserved: false },
             { date: '2026-05-01', name: 'Labour Day', isObserved: false },
@@ -176,7 +181,7 @@
             { date: '2026-08-10', name: 'National Day Off-in-Lieu', isObserved: true },
             { date: '2026-11-08', name: 'Deepavali', isObserved: false },
             { date: '2026-11-09', name: 'Deepavali Off-in-Lieu', isObserved: true },
-            { date: '2026-12-25', name: 'Christmas', isObserved: false },
+            { date: '2026-12-25', name: 'Christmas Day', isObserved: false },
         ];
         const SUGGESTIONS = [
             '2026-01-02', '2026-02-16', '2026-02-19', '2026-02-20', '2026-03-20', 
@@ -201,48 +206,58 @@
             document.getElementById('save-status').textContent = "Saving...";
             try {
                 await setDoc(doc(db, "planners", userId), data);
-                document.getElementById('save-status').textContent = "Saved to Cloud";
+                document.getElementById('save-status').textContent = "Saved";
             } catch (e) {
                 console.error(e);
                 document.getElementById('save-status').textContent = "Save Error";
             }
         }
         
-        // Single Unified Interaction Handler
+        // --- NEW CYCLE INTERACTION LOGIC ---
         function handleDateInteract(key, isWeekend, ph) {
             if(ph || isWeekend) return showToast("Cannot modify weekends or holidays");
             
-            // Calculate remaining
+            // Current value
+            const currentVal = state.leaveMap.get(key) || 0;
+            let newVal = 0; // default to clear
+
+            if (activeMode === 'leave') {
+                // Cycle: Empty (0) -> Full (1.0) -> Half (0.5) -> Empty (0)
+                if (currentVal === 0 || currentVal === 0.0) newVal = 1.0;
+                else if (currentVal === 1.0) newVal = 0.5;
+                else if (currentVal === 0.5) newVal = 0;
+                // Note: If currently Blocked (0), treat as Empty and go to Full.
+            } 
+            else if (activeMode === 'block') {
+                // Toggle: Empty/Leave -> Blocked (0) -> Empty
+                // We use 0.001 or string 'block' typically, but here 0 is used for block?
+                // Wait, previous code used 0 for block. But standard empty is undefined.
+                // Let's ensure 0 means Blocked visually.
+                // Actually, let's use -1 for Block to distinguish from Empty (undefined/null).
+                // Refactoring Model: 1=Full, 0.5=Half, -1=Block, undefined=Empty.
+                
+                if (currentVal === -1) newVal = 0; // Clear block
+                else newVal = -1; // Set block
+            }
+
+            // Check Balance (Only if adding leave)
             let used = 0;
             state.leaveMap.forEach(v => { if(v > 0) used += v; });
             const remaining = state.totalAnnualLeave - used;
-            const currentVal = state.leaveMap.get(key) || 0;
-
-            if (currentTool === -1) {
-                // Erase Mode
-                if (state.leaveMap.has(key)) {
-                    state.leaveMap.delete(key);
-                    showToast("Cleared");
-                    render(); saveToCloud();
-                }
-                return;
-            }
-
-            // Apply Tool (Block, Half, Full)
-            // Check balance impact
-            let costDiff = 0;
-            if (currentTool > 0) costDiff = currentTool;
-            if (currentVal > 0) costDiff -= currentVal; // Credit back old value
             
-            // If blocking (0), cost is 0. If erasing, handled above.
-            if (currentTool === 0) costDiff = 0; 
+            // Calculate cost difference of this specific change
+            let costDiff = 0;
+            if (newVal > 0) costDiff += newVal;
+            if (currentVal > 0) costDiff -= currentVal;
 
-            if (remaining - costDiff < 0 && currentTool > 0) {
+            if (remaining - costDiff < 0) {
                  return showToast("Balance depleted");
             }
 
             // Apply
-            state.leaveMap.set(key, currentTool);
+            if (newVal === 0) state.leaveMap.delete(key);
+            else state.leaveMap.set(key, newVal);
+            
             render(); saveToCloud();
         }
 
@@ -291,9 +306,9 @@
                     const el = document.createElement('div');
                     let classes = "day-cell h-14 rounded-lg flex flex-col items-center justify-center border text-sm relative cursor-pointer active:scale-95 transition-transform ";
                     
-                    if (val === 1) classes += "bg-emerald-500 text-white border-emerald-600 shadow-md";
+                    if (val === 1) classes += "bg-emerald-500 text-white border-emerald-600 shadow-md font-bold";
                     else if (val === 0.5) classes += "half-day border-emerald-500 shadow-md font-bold";
-                    else if (val === 0) classes += "bg-red-500 text-white border-red-600 shadow-md";
+                    else if (val === -1 || val === 0) classes += "bg-red-500 text-white border-red-600 shadow-md font-bold"; // 0 was block in old logic, -1 in new
                     else if (ph) classes += "bg-blue-500 text-white border-blue-600 cursor-default";
                     else if (isWeekend) classes += "bg-gray-100 text-gray-400 border-gray-100 cursor-default";
                     else if (state.suggestedLeaveMap.has(key)) classes += "bg-yellow-400 text-gray-900 border-yellow-500";
@@ -306,7 +321,7 @@
                     if(ph) el.innerHTML += `<div class="text-[8px] leading-none mt-1 opacity-90">${ph.isObserved?'OFF':'PH'}</div>`;
                     else if(val === 1) el.innerHTML += `<div class="text-[8px] leading-none mt-1">FULL</div>`;
                     else if(val === 0.5) el.innerHTML += `<div class="text-[8px] leading-none mt-1">HALF</div>`;
-                    else if(val === 0) el.innerHTML += `<div class="text-[8px] leading-none mt-1">BLOCK</div>`;
+                    else if(val === -1 || val === 0) el.innerHTML += `<div class="text-[8px] leading-none mt-1">BLOCK</div>`;
 
                     // Interaction
                     if(!ph && !isWeekend) {
@@ -319,30 +334,16 @@
             }
         }
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.classList.remove('opacity-0', 'pointer-events-none');
-            setTimeout(() => t.classList.add('opacity-0', 'pointer-events-none'), 2000);
-        }
-
         // --- 4. INITIALIZATION ---
         
         function listenToUser(uid) {
-             // Detach old listener if exists (not implemented for simplicity in this MVP, 
-             // but effectively overwriting the onSnapshot call works for switching).
-             
              userId = uid;
              document.getElementById('user-id-display').textContent = userId.substring(0,8);
              
-             // Update URL without reload to make it shareable
+             // Update URL safely
              const newUrl = new URL(window.location);
              newUrl.searchParams.set('uid', userId);
-             try {
-                 window.history.pushState({}, '', newUrl);
-             } catch (e) {
-                 console.log("Could not update URL (likely due to sandbox environment):", e);
-             }
+             try { window.history.pushState({}, '', newUrl); } catch(e){}
 
              onSnapshot(doc(db, "planners", userId), (doc) => {
                 document.getElementById('loading-screen').style.opacity = '0';
@@ -351,10 +352,10 @@
                 if (doc.exists()) {
                     const data = doc.data();
                     state.totalAnnualLeave = data.total || 21;
+                    // Handle transition of old block logic (0) to new (-1) if needed, or just handle both in render
                     state.leaveMap = new Map(Object.entries(data.leaves || {}));
                     document.getElementById('save-status').textContent = "Synced";
                 } else {
-                    // New user, stick with defaults and save
                     saveToCloud();
                 }
                 state.isLoaded = true;
@@ -365,20 +366,12 @@
         async function init() {
             try {
                 await signInAnonymously(auth);
-                
-                // Check for UID in URL
                 const params = new URLSearchParams(window.location.search);
                 const urlUid = params.get('uid');
-                
-                if (urlUid) {
-                    // Use the ID from the URL
-                    listenToUser(urlUid);
-                } else {
-                    // Generate new ID (using Auth UID)
-                    listenToUser(auth.currentUser.uid);
-                }
+                if (urlUid) listenToUser(urlUid);
+                else listenToUser(auth.currentUser.uid);
 
-                // UI Listeners
+                // Setup UI Listeners
                 document.getElementById('edit-balance-btn').addEventListener('click', () => {
                     document.getElementById('balance-display').classList.add('hidden');
                     document.getElementById('balance-edit-form').classList.remove('hidden');
@@ -394,23 +387,16 @@
                     }
                 });
                 
-                // Sync Modal Logic
+                // Modal
                 const modal = document.getElementById('sync-modal');
                 document.getElementById('open-sync-btn').onclick = () => modal.classList.remove('hidden');
                 document.getElementById('cancel-sync-btn').onclick = () => modal.classList.add('hidden');
                 document.getElementById('confirm-sync-btn').onclick = () => {
                     const inputId = document.getElementById('manual-id-input').value.trim();
-                    if(inputId) {
-                        listenToUser(inputId);
-                        modal.classList.add('hidden');
-                        showToast("Switched to ID: " + inputId.substring(0,6));
-                    }
+                    if(inputId) { listenToUser(inputId); modal.classList.add('hidden'); showToast("Switched ID"); }
                 };
-                
-                // Copy Link Logic
                 document.getElementById('copy-link-btn').onclick = () => {
-                    const url = window.location.href;
-                    navigator.clipboard.writeText(url).then(() => showToast("Link Copied!"));
+                    navigator.clipboard.writeText(window.location.href).then(() => showToast("Link Copied!"));
                 };
 
             } catch (e) {
